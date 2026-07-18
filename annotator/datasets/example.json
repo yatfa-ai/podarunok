@@ -1,0 +1,10 @@
+{
+  "name": "example",
+  "verdicts": [["rework", "Rework"], ["keep", "Keep"], ["kill", "Kill"], ["unsure", "Unsure"]],
+  "global": "A tiny demo dataset. Replace it with your own elements — this tool is not tied to any app.",
+  "elements": [
+    {"id":"x1","group":"Header","name":"Logo & nav","shot":null,"verdict":"keep","note":""},
+    {"id":"x2","group":"Header","name":"Primary CTA","shot":null,"verdict":"rework","note":"Low contrast — hard to spot."},
+    {"id":"x3","group":"Body","name":"Hero headline","shot":null,"verdict":"unsure","note":""}
+  ]
+}

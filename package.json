@@ -1,0 +1,14 @@
+{
+  "name": "podarunok",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Generic, app-agnostic screenshot/element annotation tool.",
+  "scripts": {
+    "start": "node annotator/annotator-server.mjs",
+    "annotator": "node annotator/annotator-server.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Annotator</title>
+<style>
+  :root{
+    --bg:#020617; --surface:#0F172A; --raised:#1E293B; --border:#1E293B; --border2:#334155;
+    --text:#F8FAFC; --mut:#64748B; --mut2:#94A3B8; --cta:#22C55E; --warn:#F59E0B; --err:#EF4444; --info:#3B82F6;
+    --r:10px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Plus Jakarta Sans",sans-serif}
+  header.top{position:sticky;top:0;z-index:10;background:rgba(2,6,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--border2);padding:10px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  header.top h1{font-size:15px;margin:0;font-weight:700}
+  header.top .sub{color:var(--mut2);font-size:12px;margin-left:6px}
+  header.top .sp{flex:1}
+  button{font:inherit;cursor:pointer;border:1px solid var(--border2);background:var(--raised);color:var(--text);padding:7px 12px;border-radius:8px}
+  button:hover{border-color:var(--cta);color:#fff}
+  button.primary{background:var(--cta);color:#04130a;border-color:var(--cta);font-weight:600}
+  button.ghost{background:transparent}
+  main{max-width:1280px;margin:0 auto;padding:18px}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .bar label{font-size:12px;color:var(--mut2)}
+  input[type=text],input.name,select{font:inherit;background:var(--raised);color:var(--text);border:1px solid var(--border2);border-radius:7px;padding:6px 9px}
+  input.name{background:transparent;border:1px solid transparent;font-weight:700;flex:1;min-width:140px}
+  input.name:focus{outline:none;border-color:var(--border2);background:var(--bg)}
+  .group{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:22px 0 10px;font-weight:700}
+  .card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--warn);border-radius:var(--r);padding:12px;margin-bottom:12px;display:grid;grid-template-columns:300px 1fr;gap:14px}
+  @media(max-width:900px){.card{grid-template-columns:1fr}}
+  .card[data-verdict="keep"]{border-left-color:var(--cta)}
+  .card[data-verdict="kill"]{border-left-color:var(--err)}
+  .card[data-verdict="unsure"]{border-left-color:var(--info)}
+  .shot{position:relative;width:300px;height:188px;border:1px solid var(--border2);border-radius:8px;overflow:hidden;background:var(--bg)}
+  .shot img{width:100%;height:100%;object-fit:cover;object-position:top left;display:block}
+  .shot .shot-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:11px;text-align:center;padding:8px}
+  .shot .shot-ph label{cursor:pointer}
+  .shot input[type=file]{display:none}
+  .shot .rm{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer}
+  .right{display:flex;flex-direction:column;gap:8px;min-width:0}
+  .meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:8px;padding:8px 10px;resize:vertical;min-height:64px;font:inherit}
+  textarea:focus{outline:none;border-color:var(--cta)}
+  .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--raised);border:1px solid var(--border2);padding:9px 14px;border-radius:8px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .del{border:1px solid transparent;background:transparent;color:var(--mut);cursor:pointer;font-size:12px;padding:3px 6px}
+  .del:hover{color:var(--err)}
+  .empty{color:var(--mut2);text-align:center;padding:60px 20px;border:1px dashed var(--border2);border-radius:var(--r)}
+  .global textarea{min-height:64px}
+  details.adv{margin:0 0 12px}
+  details.adv textarea{min-height:120px;font-family:ui-monospace,monospace;font-size:12px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Annotator</h1>
+  <span class="sub">elements · screenshots · verdicts → JSON</span>
+  <span class="sp"></span>
+  <button class="ghost" id="add">+ element</button>
+  <button id="imp">Import</button>
+  <button id="exp">Export JSON</button>
+  <button class="ghost" id="save">Save dataset</button>
+  <button class="primary" id="send">Submit ✓</button>
+</header>
+
+<main>
+  <div class="bar">
+    <label>dataset <input type="text" id="name" style="min-width:220px" placeholder="my-review"></label>
+    <label>load <select id="loader"><option value="">(saved on server)</option></select></label>
+    <span style="color:var(--mut)">local edits: <span id="dirty">…</span></span>
+  </div>
+
+  <div class="global">
+    <div class="group" style="margin:0 0 4px">Overall notes</div>
+    <textarea id="global" placeholder="Top-level summary of this review…"></textarea>
+  </div>
+
+  <details class="adv">
+    <summary style="cursor:pointer;color:var(--mut2);font-size:12px">Advanced — verdict set (edit JSON)</summary>
+    <textarea id="verdictsjson" spellcheck="false"></textarea>
+  </details>
+
+  <div id="list"></div>
+
+  <div id="empty" class="empty" style="display:none">
+    No elements yet. <b>+ element</b> to add one, <b>Import</b> a dataset JSON,<br>or pick a saved dataset under <b>load</b>.
+  </div>
+</main>
+
+<input type="file" id="impf" accept="application/json" style="display:none">
+<div class="toast" id="t"></div>
+
+<script>
+// A "dataset" is plain data — nothing about this tool is tied to any app.
+// { name, verdicts:[[value,label]...], global, elements:[{id,group,name,shot,verdict,note,img}] }
+// `shot` is a slug resolved to /shots/<shot>.png; `img` (pasted data URL) overrides it.
+const DEFAULT_VERDICTS = [["rework","Rework"],["keep","Keep"],["kill","Kill"],["unsure","Unsure"]];
+
+function uid(){ return "e"+Math.random().toString(36).slice(2,9); }
+function freshState(name){
+  return { name:name||"untitled", verdicts:DEFAULT_VERDICTS.slice(), global:"", elements:[] };
+}
+function keyFor(name){ return "annotator:"+name; }
+
+let state = freshState();
+let savedSnapshot = "";   // serialized baseline to detect local edits
+
+function snapshot(){ return JSON.stringify({name:state.name,verdicts:state.verdicts,global:state.global,elements:state.elements}); }
+
+let toastT;
+function flash(msg){ const t=document.getElementById("t"); t.textContent=msg; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1600); }
+function esc(s){ return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+
+function persistLocal(){
+  try { localStorage.setItem(keyFor(state.name), JSON.stringify(state)); }
+  catch(e){
+    try { const lite={...state,elements:state.elements.map(x=>({...x,img:""}))}; localStorage.setItem(keyFor(state.name),JSON.stringify(lite)); flash("saved (without pasted images)"); }
+    catch(e2){ flash("not saved"); }
+  }
+  setDirty();
+}
+function setDirty(){
+  const dirty = snapshot() !== savedSnapshot;
+  document.getElementById("dirty").textContent = dirty ? "yes — unsaved" : "none";
+}
+
+// ---- loading -------------------------------------------------------------
+async function boot(){
+  const params = new URLSearchParams(location.search);
+  const want = params.get("d");
+  let loaded = false;
+  if(want){ loaded = await loadFromServer(want); }
+  if(!loaded){
+    let last = null; try { last = localStorage.getItem("annotator:last"); } catch(e){}
+    if(last){ loaded = await loadFromServer(last); if(!loaded) loaded = loadFromLocal(last); }
+  }
+  if(!loaded && !state.elements.length){ state = freshState("untitled"); }
+  await refreshLoader();
+  render();
+}
+async function refreshLoader(){
+  const sel = document.getElementById("loader");
+  let names=[]; try { const r=await fetch("/datasets"); if(r.ok){ const j=await r.json(); names=j.names||[]; } }catch(e){}
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">(load saved…)</option>' + names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  if(cur && names.includes(cur)) sel.value=cur;
+}
+async function loadFromServer(name){
+  try{
+    const r = await fetch("/datasets/"+encodeURIComponent(name));
+    if(!r.ok) return false;
+    const j = await r.json();
+    adopt(j, name);
+    try{ localStorage.setItem("annotator:last", name); }catch(e){}
+    return true;
+  }catch(e){ return false; }
+}
+function loadFromLocal(name){
+  try{ const j=JSON.parse(localStorage.getItem(keyFor(name))); if(j&&j.elements){ adopt(j,name); return true; } }catch(e){}
+  return false;
+}
+function adopt(j, name){
+  state = {
+    name: j.name||name||"untitled",
+    verdicts: (j.verdicts&&j.verdicts.length)? j.verdicts : DEFAULT_VERDICTS.slice(),
+    global: j.global||"",
+    elements: (j.elements||[]).map(x=>({id:x.id||uid(),group:x.group||"Ungrouped",name:x.name||"element",shot:x.shot||null,verdict:x.verdict||(state_verdict0()||"rework"),note:x.note||"",img:x.img||""}))
+  };
+  savedSnapshot = snapshot();
+}
+function state_verdict0(){ try{ return state.verdicts[0][0]; }catch(e){ return "rework"; } }
+
+// ---- rendering -----------------------------------------------------------
+function render(){
+  document.getElementById("name").value = state.name;
+  document.getElementById("global").value = state.global;
+  document.getElementById("verdictsjson").value = JSON.stringify(state.verdicts,null,2);
+  const list=document.getElementById("list"); list.innerHTML="";
+  const groups={};
+  state.elements.forEach(it=>{ (groups[it.group||(it.group="Ungrouped")]=groups[it.group]||[]).push(it); });
+  const order=[...new Set(state.elements.map(x=>x.group))];
+  order.forEach(g=>{ const h=document.createElement("div"); h.className="group"; h.textContent=g; list.appendChild(h); groups[g].forEach(it=>list.appendChild(card(it))); });
+  document.getElementById("empty").style.display = state.elements.length? "none":"block";
+  setDirty();
+}
+function card(it){
+  const el=document.createElement("div");
+  el.className="card"; el.dataset.verdict=it.verdict; el.dataset.id=it.id;
+  const src = it.img || (it.shot ? "shots/"+it.shot+".png" : "");
+  el.innerHTML=`
+    <div class="shot">
+      ${src?`<img src="${esc(src)}" onerror="this.style.display='none';this.parentElement.querySelector('.shot-ph').style.display='flex'"><div class="shot-ph" style="display:none">image not found</div>`:`<div class="shot-ph"><label>📷 paste or load a screenshot<input type="file" accept="image/*"></label></div>`}
+      ${(it.img)?`<button class="rm" title="remove image">×</button>`:""}
+    </div>
+    <div class="right">
+      <div class="meta">
+        <input class="name" value="${esc(it.name)}" title="name">
+        <input class="group" value="${esc(it.group)}" title="group" style="max-width:160px">
+        <select class="ver">${state.verdicts.map(v=>`<option value="${esc(v[0])}" ${v[0]===it.verdict?"selected":""}>${esc(v[1])}</option>`).join("")}</select>
+        <button class="del">delete</button>
+      </div>
+      <textarea class="notes" placeholder="note / finding / verdict rationale…">${esc(it.note||"")}</textarea>
+    </div>`;
+  el.querySelector(".name").oninput=e=>{ it.name=e.target.value; persistLocal(); };
+  el.querySelector(".group").oninput=e=>{ it.group=e.target.value; persistLocal(); render(); };
+  el.querySelector(".ver").onchange=e=>{ it.verdict=e.target.value; el.dataset.verdict=it.verdict; persistLocal(); };
+  el.querySelector(".notes").oninput=e=>{ it.note=e.target.value; persistLocal(); };
+  el.querySelector(".del").onclick=()=>{ state.elements=state.elements.filter(x=>x.id!==it.id); persistLocal(); render(); };
+  const file=el.querySelector('input[type=file]');
+  if(file) file.onchange=e=>{ const f=e.target.files[0]; if(f) readImg(f,d=>{it.img=d;persistLocal();render();}); };
+  const rm=el.querySelector(".rm"); if(rm) rm.onclick=()=>{ it.img=""; persistLocal(); render(); };
+  el.addEventListener("paste",e=>{ const f=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image")); if(f){ readImg(f.getAsFile(),d=>{it.img=d;persistLocal();render();}); } });
+  return el;
+}
+function readImg(f,cb){ if(!f) return; const r=new FileReader(); r.onload=()=>cb(r.result); r.readAsDataURL(f); }
+
+// ---- wiring --------------------------------------------------------------
+document.getElementById("name").oninput=e=>{ state.name=e.target.value; persistLocal(); };
+document.getElementById("global").oninput=e=>{ state.global=e.target.value; persistLocal(); };
+document.getElementById("verdictsjson").onchange=e=>{
+  try{ const v=JSON.parse(e.target.value); if(Array.isArray(v)&&v.every(x=>Array.isArray(x)&&x.length>=1)){ state.verdicts=v; persistLocal(); render(); flash("verdicts updated"); } else flash("verdicts must be [[value,label]...]"); }
+  catch(err){ flash("bad verdicts JSON"); document.getElementById("verdictsjson").value=JSON.stringify(state.verdicts,null,2); }
+};
+document.getElementById("add").onclick=()=>{
+  const group = (state.elements[state.elements.length-1]?.group) || "Ungrouped";
+  state.elements.push({id:uid(),group,name:"New element",shot:null,verdict:state_verdict0(),note:"",img:""});
+  persistLocal(); render();
+  const inputs=document.querySelectorAll(".card .name"); const last=inputs[inputs.length-1]; if(last){ last.focus(); last.select(); }
+};
+document.getElementById("loader").onchange=async e=>{
+  const n=e.target.value; if(!n) return;
+  if(!(await loadFromServer(n))) loadFromLocal(n);
+  render(); flash("loaded "+n);
+};
+
+function payload(){ return { name:state.name, verdicts:state.verdicts, global:state.global,
+  elements: state.elements.map(x=>({id:x.id,group:x.group,name:x.name,shot:x.shot,verdict:x.verdict,note:x.note,has_image:!!x.img})) }; }
+function fullState(){ return { name:state.name, verdicts:state.verdicts, global:state.global,
+  elements: state.elements.map(x=>({id:x.id,group:x.group,name:x.name,shot:x.shot,verdict:x.verdict,note:x.note,img:x.img})) }; }
+
+document.getElementById("exp").onclick=()=>{
+  const blob=new Blob([JSON.stringify(fullState(),null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=(state.name||"annotations")+".json"; a.click(); flash("exported");
+};
+document.getElementById("save").onclick=async ()=>{
+  const name=state.name?.trim(); if(!name){ flash("name the dataset first"); return; }
+  flash("saving…");
+  try{ const r=await fetch("/datasets/"+encodeURIComponent(name),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fullState())}); if(r.ok){ savedSnapshot=snapshot(); setDirty(); await refreshLoader(); flash("saved dataset: "+name); } else flash("save failed: "+r.status); }
+  catch(e){ flash("save didn't reach server"); }
+};
+document.getElementById("send").onclick=async ()=>{
+  flash("sending…");
+  try{ const r=await fetch("/submit",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload())}); flash(r.ok?"sent ✓":"error: "+r.status); }
+  catch(e){ flash("didn't reach server"); }
+};
+document.getElementById("imp").onclick=()=>document.getElementById("impf").click();
+document.getElementById("impf").onchange=e=>{ const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>{ try{ const j=JSON.parse(r.result); adopt(j, j.name||f.name.replace(/\.json$/,"")); render(); flash("imported"); }
+  catch(err){ flash("not a dataset JSON"); } }; r.readAsText(f); e.target.value=""; };
+
+boot();
+</script>
+</body>
+</html>

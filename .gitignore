@@ -1,0 +1,19 @@
+# credentials / local config
+.env
+
+# runtime annotation submissions (POST /submit writes here)
+annotator/submissions/
+
+# user datasets + screenshots (not part of the tool — keep them local).
+# Ship only the generic example dataset.
+annotator/datasets/*
+!annotator/datasets/example.json
+annotator/shots/
+
+# macOS / editor cruft
+.DS_Store
+*.swp
+
+# node
+node_modules/
+npm-debug.log*
