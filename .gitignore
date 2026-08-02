@@ -17,3 +17,6 @@ annotator/shots/
 # node
 node_modules/
 npm-debug.log*
+
+# go build output (roleplay CLI — build it with `go build -o roleplay .`)
+/roleplay/roleplay
